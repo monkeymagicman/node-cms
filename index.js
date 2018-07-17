@@ -1,5 +1,8 @@
 var express = require('express');
 var contentful = require('contentful');
+var showdown = require('showdown');
+
+var converter = new showdown.Converter();
 
 //declare static paths & views
 //to be used for high value landers
@@ -16,11 +19,19 @@ var staticPaths = {
 //set homepage view
 var app = express();
 app.set('view engine', 'ejs');
+
+//homepage view
 app.get('/', function (req, res) {
     res.render('homepage');
  })
 
-//get all non homepage urls
+ //404 view
+app.get('/404', function (req, res) {
+    res.status('404');
+    res.render('404');
+})
+
+//get all non homepage url requests
 app.get('/*', function (req, res) {
 
     //grab path from req
@@ -63,8 +74,7 @@ app.get('/*', function (req, res) {
             //we have dupicate content in the cms (shouldnt be possible)
             //return 404
             if(entries.items.length !== 1){
-                res.status("404");
-                res.send("404 - Woops try again!!!");
+                res.redirect('404');
             }else{
                 //if we have exactly 1 post
                 //pull all the fields for this post
@@ -74,11 +84,18 @@ app.get('/*', function (req, res) {
                 //dynamic attributes before rendering
                 entries.items.forEach(function(entry) {
                     var fields = entry.fields;
-                    res.render(fields.theme, fields);
+                    
+                    res.render(fields.theme, fields, function(err, html){
+                        if(err){
+                            res.redirect('404');
+                        }else{
+                            res.send(converter.makeHtml(html));
+                        }
+                    });
                 })
             }
         })
-    }    
+    }
 });
 
 //initiate server
